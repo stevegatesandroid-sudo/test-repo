@@ -1,0 +1,38 @@
+name: Test Python
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  validate-python:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Compile Python files
+        run: python -m py_compile atm_simulation.py
+
+      - name: Run ATM smoke checks
+        run: |
+          python - <<'PY'
+          from atm_simulation import Account, ATM, format_money, money_to_cents
+
+          account = Account("test", "0000", 1000)
+          account.deposit(money_to_cents("2.50"))
+          account.withdraw(money_to_cents("1.25"))
+          assert account.balance_cents == 1125
+          assert format_money(account.balance_cents) == "$11.25"
+
+          atm = ATM({"test": account})
+          assert atm.authenticate("test", ["1111", "0000"]) is account
+          assert atm.authenticate("test", ["1111", "2222", "3333"]) is None
+          PY
